@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Profile Scraper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Получение информации о профиле Instagram</h1>
+    <form id="profileForm">
+        <input type="text" id="username" placeholder="Введите имя пользователя" required>
+        <input type="number" id="videoCount" placeholder="Введите количество видео" min="0" required>
+        <button type="submit">Получить профиль</button>
+    </form>
+
+    <div class="loader" id="loader"></div>
+    <div class="loading-text" id="loadingText">Пожалуйста, подождите...</div>
+    <div id="result" class="result"></div>
+
+    <script>
+        document.getElementById('profileForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const videoCount = document.getElementById('videoCount').value; // Получение количества видео
+            const resultDiv = document.getElementById('result');
+            const loader = document.getElementById('loader');
+            const loadingText = document.getElementById('loadingText');
+
+            loader.style.display = 'block';
+            loadingText.style.display = 'block';
+            resultDiv.innerHTML = '';
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/profile?username=${username}&videoCount=${videoCount}`);
+
+                if (!response.ok) {
+                    throw new Error('Ошибка сети: ' + response.statusText);
+                }
+
+                const data = await response.json();
+                const profileInfo = data.profileData && data.profileData[0]; // Берем первый профиль
+                const videoData = data.videoData; // Получаем данные видео
+
+                if (profileInfo) {
+                    // Отображение основных данных профиля
+                    resultDiv.innerHTML = `
+                        <div class="profile-data">
+                            <h2><a href="${profileInfo.profilePicUrlHD}" class="video-link"> PHOTO URL</a></h2>
+                            <h2>${profileInfo.username}</h2>
+                            <p><strong>Имя:</strong> ${profileInfo.fullName || 'Не указано'}</p>
+                            <p><strong>Биография:</strong> ${profileInfo.biography || 'Не указано'}</p>
+                            <p><strong>Подписчики:</strong> ${profileInfo.followersCount || 0}</p>
+                            <p><strong>Подписки:</strong> ${profileInfo.followsCount || 0}</p>
+                            <p><strong>Количество постов:</strong> ${profileInfo.postsCount || 0}</p>
+                            <p><strong>Количество видео:</strong> ${videoCount}</p>
+                            <p><strong>Бизнес-аккаунт:</strong> ${profileInfo.isBusinessAccount ? 'Да' : 'Нет'}</p>
+                            <p><strong>Проверенный аккаунт:</strong> ${profileInfo.verified ? 'Да' : 'Нет'}</p>
+                        </div>
+                        <div class="profile-data">
+                            <h2>Связанные профили: <span id="relatedProfilesCount">${profileInfo.relatedProfiles ? profileInfo.relatedProfiles.length : 0}</span></h2>
+                            <ul id="relatedProfilesList"></ul>
+                            <button id="showAllButton" style="display: none;">Показать все</button>
+                            <button id="hideButton" style="display: none;">Скрыть</button>
+                        </div>
+                        <div class="video-data">
+                            <h2>Видеоролики:</h2>
+                            <ul id="videoList"></ul>
+                        </div>
+                    `;
+
+                    // Отображение связанных профилей
+                    const relatedProfiles = profileInfo.relatedProfiles || [];
+                    const relatedProfilesListElement = document.getElementById('relatedProfilesList');
+                    relatedProfiles.slice(0, 2).forEach((profile, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.className = `related-profile color-${(index % 5) + 1}`;
+                        listItem.innerHTML = `
+                            <strong>ID:</strong> ${profile.id} <br>
+                            <strong>Полное имя:</strong> ${profile.full_name} <br>
+                            <strong>Имя пользователя:</strong> <a href="https://www.instagram.com/${profile.username}" target="_blank">${profile.username}</a>
+                        `;
+                        relatedProfilesListElement.appendChild(listItem);
+                    });
+
+                    // Отображение видео
+const videoListElement = document.getElementById('videoList');
+
+// Сортировка видео по времени загрузки (timestamp) в порядке убывания
+videoData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+if (videoData.length > 0) {
+    videoData.forEach(video => {
+        const videoItem = document.createElement('li');
+        videoItem.className = 'video-item';
+        videoItem.innerHTML = `
+            <strong>ID:</strong> ${video.id || 'Не указано'} <br>
+            <strong>Название видео:</strong> ${video.caption || 'Не указано'} <br>
+            <strong>Ссылка на видео:</strong> <a href="${video.url}" target="_blank" class="video-link">Ссылка на видео</a> <br>
+            <strong>CDN видео:</strong> <a href="${video.videoUrl}" target="_blank" class="video-link">CDN видео</a> <br>
+            <strong>Количество проигрываний:</strong> ${video.videoPlayCount || 'Не указано'} <br>
+            <strong>Количество просмотров:</strong> ${video.videoViewCount || 'Не указано'} <br>
+            <strong>Количество лайков:</strong> ${video.likesCount || 'Не указано'} <br>
+            <strong>Количество комментариев:</strong> ${video.commentsCount || 'Не указано'} <br>
+            <strong>Время загрузки:</strong> ${new Date(video.timestamp).toLocaleString() || 'Не указано'} <br>
+            <strong>Длительность:</strong> ${video.videoDuration || 'Не указано'} <br>
+        `;
+        videoListElement.appendChild(videoItem);
+    });
+} else {
+    videoListElement.innerHTML = '<li>Нет доступных видео.</li>';
+}
+
+
+                    // Кнопки показа всех связанных профилей
+                    if (relatedProfiles.length > 2) {
+                        document.getElementById('showAllButton').style.display = 'block';
+                        document.getElementById('showAllButton').addEventListener('click', () => {
+                            relatedProfilesListElement.innerHTML = '';
+                            relatedProfiles.forEach((profile, index) => {
+                                const listItem = document.createElement('li');
+                                listItem.className = `related-profile color-${(index % 5) + 1}`;
+                                listItem.innerHTML = `
+                                    <strong>ID:</strong> ${profile.id} <br>
+                                    <strong>Полное имя:</strong> ${profile.full_name} <br>
+                                    <strong>Имя пользователя:</strong> <a href="https://www.instagram.com/${profile.username}" target="_blank">${profile.username}</a>
+                                `;
+                                relatedProfilesListElement.appendChild(listItem);
+                            });
+                            document.getElementById('showAllButton').style.display = 'none';
+                            document.getElementById('hideButton').style.display = 'block';
+                        });
+
+                        document.getElementById('hideButton').addEventListener('click', () => {
+                            relatedProfilesListElement.innerHTML = '';
+                            relatedProfiles.slice(0, 2).forEach((profile, index) => {
+                                const listItem = document.createElement('li');
+                                listItem.className = `related-profile color-${(index % 5) + 1}`;
+                                listItem.innerHTML = `
+                                    <strong>ID:</strong> ${profile.id} <br>
+                                    <strong>Полное имя:</strong> ${profile.full_name} <br>
+                                    <strong>Имя пользователя:</strong> <a href="https://www.instagram.com/${profile.username}" target="_blank">${profile.username}</a>
+                                `;
+                                relatedProfilesListElement.appendChild(listItem);
+                            });
+                            document.getElementById('hideButton').style.display = 'none';
+                            document.getElementById('showAllButton').style.display = 'block';
+                        });
+                    }
+                } else {
+                    resultDiv.innerHTML = '<p>Не удалось получить информацию о профиле.</p>';
+                }
+            } catch (error) {
+                console.error(error);
+                resultDiv.innerHTML = '<p>Произошла ошибка при получении данных. Пожалуйста, попробуйте позже.</p>';
+            } finally {
+                loader.style.display = 'none';
+                loadingText.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>
