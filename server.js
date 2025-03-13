@@ -7,7 +7,7 @@ const port = 3000;
 
 // Инициализация клиента Apify с вашим токеном
 const client = new ApifyClient({
-    token: 'apify_api_RzWdvH0DDDagDGHxPZokq6iBIiUWK40dXpCR', // Замените на свой токен
+    token: '', // Замените на свой токен
 });
 
 // Использование cors middleware
